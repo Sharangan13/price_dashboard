@@ -2,7 +2,7 @@ name: Daily ETL
 
 on:
   schedule:
-    - cron: '30 10 * * 1-5'   # 4:00 PM Sri Lanka Time (UTC+5:30)
+    - cron: '42 10 * * 1-5'   # 4:00 PM Sri Lanka Time (UTC+5:30)
     - cron: '30 14 * * 1-5'   # 8:00 PM Sri Lanka Time (UTC+5:30)
   workflow_dispatch:
 
