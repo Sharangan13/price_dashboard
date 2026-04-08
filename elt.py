@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 
 # ── CONFIG ──────────────────────────────────────────────
 DB_CONFIG = {
-    "host":     os.environ.get("DB_HOST",   "db.dszaprwbwjcveutcveqm.supabase.co"),
+    "host":     os.environ.get("DB_HOST"),
     "port":     int(os.environ.get("DB_PORT", 6543)),
-    "dbname":   os.environ.get("DB_NAME",   "postgres"),
-    "user":     os.environ.get("DB_USER",   "postgres"),
-    "password": os.environ.get("DB_PASS",   "Sharangan1998@")
+    "dbname":   os.environ.get("DB_NAME"),
+    "user":     os.environ.get("DB_USER"),
+    "password": os.environ.get("DB_PASS")
 }
 
 PDF_FOLDER = "downloaded_pdfs"
