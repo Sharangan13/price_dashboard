@@ -5,31 +5,34 @@ import re, os, time
 from datetime import datetime, timedelta
 
 # ── CONFIG ──────────────────────────────────────────────
-# Reads from environment variables (for GitHub Actions)
-# Falls back to local values (for testing on your PC)
 DB_CONFIG = {
-    "host":     os.environ.get("DB_HOST",   "db.xxxx.supabase.co"),  # ← change xxxx
-    "port":     int(os.environ.get("DB_PORT", 5432)),
+    "host":     os.environ.get("DB_HOST",   "db.dszaprwbwjcveutcveqm.supabase.co"),
+    "port":     int(os.environ.get("DB_PORT", 6543)),
     "dbname":   os.environ.get("DB_NAME",   "postgres"),
     "user":     os.environ.get("DB_USER",   "postgres"),
-    "password": os.environ.get("DB_PASS",   "YOUR-SUPABASE-PASSWORD")  # ← change this
+    "password": os.environ.get("DB_PASS",   "Sharangan1998@")
 }
 
 PDF_FOLDER = "downloaded_pdfs"
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
-# ── Test Database Connection ─────────────────────────────
+# ── Test Supabase Connection ─────────────────────────────
 def test_db_connection():
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(**DB_CONFIG, connect_timeout=10)
         cur = conn.cursor()
         cur.execute("SELECT version();")
         version = cur.fetchone()[0]
         cur.close(); conn.close()
-        print("✅ Database connected!")
+        print("✅ Supabase connected!")
+        print(f"   PostgreSQL version: {version.split(',')[0]}")
         return True
+    except psycopg2.OperationalError as e:
+        print("❌ Supabase connection failed!")
+        print(f"   Reason: {e}")
+        return False
     except Exception as e:
-        print("❌ DB connection failed:", e)
+        print("❌ Unexpected error:", e)
         return False
 
 # ── Get already-processed dates from DB ─────────────────
@@ -235,9 +238,8 @@ def run_etl(start_date=None, end_date=None, days_back=7):
     if not end_date:
         end_date = datetime.today()
     if not start_date:
-        start_date = end_date - timedelta(days=days_back)  # ✅ only last 7 days
+        start_date = end_date - timedelta(days=days_back)
 
-    # ✅ Load both processed and skipped dates
     processed_dates = get_processed_dates()
     skipped_dates   = get_skipped_dates()
     all_done        = processed_dates | skipped_dates
@@ -258,7 +260,6 @@ def run_etl(start_date=None, end_date=None, days_back=7):
 
         date_str = current.strftime('%Y-%m-%d')
 
-        # ✅ Skip if already processed or known no-PDF
         if date_str in all_done:
             print(f"⏭  {date_str} already done, skipping")
             current += timedelta(days=1)
@@ -269,7 +270,7 @@ def run_etl(start_date=None, end_date=None, days_back=7):
 
         if not fp:
             print("   ⚠ No PDF — saving to skipped_dates")
-            mark_skipped(date_str)          # ✅ remember this date
+            mark_skipped(date_str)
             total_skip += 1
             current += timedelta(days=1)
             continue
@@ -277,7 +278,7 @@ def run_etl(start_date=None, end_date=None, days_back=7):
         recs = extract_prices(fp, date_str)
         if not recs:
             print("   ⚠ No data extracted — saving to skipped_dates")
-            mark_skipped(date_str, reason="no data")   # ✅ remember this too
+            mark_skipped(date_str, reason="no data")
             total_skip += 1
         else:
             save_to_db(recs)
@@ -288,4 +289,4 @@ def run_etl(start_date=None, end_date=None, days_back=7):
     print(f"\n🎯 DONE  ✅ Saved: {total_ok}  ⏭ Skipped: {total_skip}")
 
 # ── RUN ──────────────────────────────────────────────────
-run_etl(days_back=7)
+run_etl(start_date=datetime(2021, 1, 1))
