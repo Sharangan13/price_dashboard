@@ -2,7 +2,7 @@ name: Daily ETL
 
 on:
   schedule:
-    - cron: '42 10 * * 1-5'   # 4:00 PM Sri Lanka Time (UTC+5:30)
+    - cron: '42 10 * * 1-5'   # 4:12 PM Sri Lanka Time (UTC+5:30)
     - cron: '30 14 * * 1-5'   # 8:00 PM Sri Lanka Time (UTC+5:30)
   workflow_dispatch:
 
@@ -10,10 +10,10 @@ jobs:
   run-etl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
