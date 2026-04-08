@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ── CONFIG ──────────────────────────────────────────────
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST"),
-    "port":     int(os.environ.get("DB_PORT", 6543)),
+    "port":     int(os.environ.get("DB_PORT", 5432)),
     "dbname":   os.environ.get("DB_NAME"),
     "user":     os.environ.get("DB_USER"),
     "password": os.environ.get("DB_PASS")
