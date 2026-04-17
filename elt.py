@@ -65,6 +65,15 @@ def mark_skipped(date_str, reason="no PDF"):
     conn.commit()
     cur.close(); conn.close()
 
+# ── Remove a date from skipped_dates (for manual retry) ─
+def unmark_skipped(date_str):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM skipped_dates WHERE report_date = %s", (date_str,))
+    conn.commit()
+    cur.close(); conn.close()
+    print(f"✅ Removed {date_str} from skipped_dates — will retry on next run")
+
 # ── URL Builder ──────────────────────────────────────────
 def get_pdf_urls(date):
     d = date.strftime("%Y%m%d")
@@ -230,7 +239,12 @@ def save_to_db(records):
         cur.close(); conn.close()
 
 # ── MAIN ETL ─────────────────────────────────────────────
-def run_etl(start_date=None, end_date=None, days_back=7):
+def run_etl(start_date=None, end_date=None, days_back=7, grace_days=5):
+    """
+    grace_days: skipped dates within this many days ago will be retried.
+                This handles PDFs that are uploaded late (e.g. after market close).
+                Default is 5 days — covers weekends + a few extra days buffer.
+    """
 
     if not test_db_connection():
         return
@@ -242,11 +256,18 @@ def run_etl(start_date=None, end_date=None, days_back=7):
 
     processed_dates = get_processed_dates()
     skipped_dates   = get_skipped_dates()
-    all_done        = processed_dates | skipped_dates
 
-    print(f"✅ Already in DB  : {len(processed_dates)} dates")
-    print(f"⏭  Known no-PDF   : {len(skipped_dates)} dates")
-    print(f"📅 Checking range : {start_date.strftime('%Y-%m-%d')} → {end_date.strftime('%Y-%m-%d')}")
+    # Dates skipped recently are retried — the PDF may have been uploaded late
+    grace_cutoff = (datetime.today() - timedelta(days=grace_days)).strftime('%Y-%m-%d')
+    recent_skips = {d for d in skipped_dates if d >= grace_cutoff}
+    firm_skips   = skipped_dates - recent_skips
+
+    all_done = processed_dates | firm_skips  # recent skips are NOT in all_done → will retry
+
+    print(f"✅ Already in DB     : {len(processed_dates)} dates")
+    print(f"⏭  Firm skips        : {len(firm_skips)} dates (older than {grace_days} days)")
+    print(f"🔄 Retrying skips    : {sorted(recent_skips)} (within grace period)")
+    print(f"📅 Checking range    : {start_date.strftime('%Y-%m-%d')} → {end_date.strftime('%Y-%m-%d')}")
 
     current = start_date
     total_ok, total_skip = 0, 0
@@ -265,7 +286,7 @@ def run_etl(start_date=None, end_date=None, days_back=7):
             current += timedelta(days=1)
             continue
 
-        print(f"\n📅 {date_str}")
+        print(f"\n📅 {date_str}" + (" [retry]" if date_str in recent_skips else ""))
         fp = download_pdf(current)
 
         if not fp:
@@ -274,6 +295,15 @@ def run_etl(start_date=None, end_date=None, days_back=7):
             total_skip += 1
             current += timedelta(days=1)
             continue
+
+        # PDF found — if this date was previously skipped, remove the old skip record
+        if date_str in recent_skips:
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor()
+            cur.execute("DELETE FROM skipped_dates WHERE report_date = %s", (date_str,))
+            conn.commit()
+            cur.close(); conn.close()
+            print(f"   🗑  Removed stale skip record for {date_str}")
 
         recs = extract_prices(fp, date_str)
         if not recs:
