@@ -319,4 +319,4 @@ def run_etl(start_date=None, end_date=None, days_back=7, grace_days=5):
     print(f"\n🎯 DONE  ✅ Saved: {total_ok}  ⏭ Skipped: {total_skip}")
 
 # ── RUN ──────────────────────────────────────────────────
-run_etl(start_date=datetime(2026, 1, 1))
+run_etl(start_date=datetime(["2026-10-12", "2026-10-13"])
